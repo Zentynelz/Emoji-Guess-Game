@@ -1,10 +1,29 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
+
     <style name="Theme.EmojiGuess" parent="Theme.Material3.Light.NoActionBar">
+
+        <!-- Colores principales -->
         <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorOnPrimary">@android:color/white</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- Variantes -->
+        <item name="colorPrimaryContainer">@color/purple_200</item>
+
+        <!-- Secundarios -->
         <item name="colorSecondary">@color/colorSecondary</item>
+        <item name="colorOnSecondary">@color/black</item>
+
+        <!-- Superficie -->
+        <item name="colorSurface">@color/white</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+
+        <!-- Fondos -->
+        <item name="android:windowBackground">@color/colorBackground</item>
+
+        <!-- Barra de estado / navegación -->
         <item name="android:statusBarColor">@color/colorPrimaryDark</item>
         <item name="android:navigationBarColor">@color/colorPrimaryDark</item>
-        <item name="android:windowBackground">@color/colorBackground</item>
+
     </style>
+
 </resources>
