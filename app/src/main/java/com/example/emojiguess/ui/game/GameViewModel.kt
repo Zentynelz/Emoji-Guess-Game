@@ -59,6 +59,8 @@ class GameViewModel : ViewModel() {
     private var selfPlayerId: String = ""
     private var selfPlayerName: String = ""
     private var currentGame: Game? = null
+    private var lastTurnPlayerId: String = ""  // Para detectar cambios de turno
+    private var lastRoundStartTime: Long = 0L  // Para detectar nuevo turno
 
     fun initialize(roomId: String, playerId: String, playerName: String) {
         android.util.Log.d("GameViewModel", "Initialize - RoomId: $roomId, PlayerId: $playerId, PlayerName: $playerName")
@@ -135,23 +137,43 @@ class GameViewModel : ViewModel() {
         val isMyTurn = game.currentTurnPlayerId == selfPlayerId
         _isPlayerTurn.postValue(isMyTurn)
         
-        // Actualizar temporizador
+        // Actualizar temporizador solo si cambió el turno o es un nuevo turno
         if (game.state == GameState.IN_PROGRESS.name && game.roundStartTime > 0) {
-            val remaining = repository.getRemainingTime(game).coerceAtMost(Constants.DEFAULT_ROUND_DURATION)
-            _timerSeconds.postValue(remaining)
+            val turnChanged = game.currentTurnPlayerId != lastTurnPlayerId || 
+                             game.roundStartTime != lastRoundStartTime
             
-            // Cancelar temporizador anterior si existe
-            if (timerJob?.isActive == true) {
+            if (turnChanged) {
+                android.util.Log.d("GameViewModel", "Turno cambió - Reiniciando timer")
+                android.util.Log.d("GameViewModel", "  Turno anterior: $lastTurnPlayerId")
+                android.util.Log.d("GameViewModel", "  Turno actual: ${game.currentTurnPlayerId}")
+                
+                // Actualizar referencias
+                lastTurnPlayerId = game.currentTurnPlayerId
+                lastRoundStartTime = game.roundStartTime
+                
+                // Cancelar temporizador anterior
                 timerJob?.cancel()
-            }
-            
-            // Iniciar temporizador si hay tiempo restante
-            if (remaining > 0) {
-                startTimer(remaining)
+                
+                // Calcular tiempo restante
+                val remaining = repository.getRemainingTime(game).coerceAtMost(Constants.DEFAULT_ROUND_DURATION)
+                _timerSeconds.postValue(remaining)
+                
+                // Iniciar nuevo temporizador
+                if (remaining > 0) {
+                    startTimer(remaining)
+                }
+            } else {
+                // Solo actualizar el display del tiempo sin reiniciar el timer
+                val remaining = repository.getRemainingTime(game).coerceAtMost(Constants.DEFAULT_ROUND_DURATION)
+                if (timerJob?.isActive != true) {
+                    _timerSeconds.postValue(remaining)
+                }
             }
         } else {
             // Cancelar temporizador si no estamos en progreso
             timerJob?.cancel()
+            lastTurnPlayerId = ""
+            lastRoundStartTime = 0L
         }
         
         // Actualizar mensaje de estado
