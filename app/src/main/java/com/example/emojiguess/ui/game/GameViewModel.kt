@@ -136,17 +136,22 @@ class GameViewModel : ViewModel() {
         _isPlayerTurn.postValue(isMyTurn)
         
         // Actualizar temporizador
-        if (game.state == GameState.IN_PROGRESS.name) {
+        if (game.state == GameState.IN_PROGRESS.name && game.roundStartTime > 0) {
             val remaining = repository.getRemainingTime(game).coerceAtMost(Constants.DEFAULT_ROUND_DURATION)
             _timerSeconds.postValue(remaining)
             
-            // Solo iniciar temporizador si es mi turno, hay tiempo restante y no hay uno activo
-            if (isMyTurn && remaining > 0 && (timerJob == null || timerJob?.isActive == false)) {
-                startTimer(remaining)
-            } else if (!isMyTurn) {
-                // Cancelar temporizador si ya no es mi turno
+            // Cancelar temporizador anterior si existe
+            if (timerJob?.isActive == true) {
                 timerJob?.cancel()
             }
+            
+            // Iniciar temporizador si hay tiempo restante
+            if (remaining > 0) {
+                startTimer(remaining)
+            }
+        } else {
+            // Cancelar temporizador si no estamos en progreso
+            timerJob?.cancel()
         }
         
         // Actualizar mensaje de estado
@@ -232,33 +237,34 @@ class GameViewModel : ViewModel() {
             
             android.util.Log.d("GameViewModel", "Resultado: ${if (isCorrect) "CORRECTO" else "INCORRECTO"}")
             
-            if (isCorrect) {
-                _statusMessage.postValue("¡Correcto! Sigues en el juego")
-            } else {
-                _statusMessage.postValue("Incorrecto. Has sido eliminado")
-            }
-            
             _selectedEmoji.postValue(null)
             
-            // Esperar un momento para que el usuario vea el resultado
-            kotlinx.coroutines.delay(1500)
-            
-            // Esperar a que se actualice el juego después de la respuesta
-            kotlinx.coroutines.delay(500)
-            
-            // Obtener el juego actualizado
-            val updatedGame = currentGame ?: return@launch
-            
-            if (repository.isGameOver(updatedGame)) {
-                android.util.Log.d("GameViewModel", "Juego terminado")
-                repository.finishGame(updatedGame)
-            } else {
+            if (isCorrect) {
+                _statusMessage.postValue("¡Correcto! Sigues en el juego")
+                
+                // Esperar un momento para que el usuario vea el resultado
+                kotlinx.coroutines.delay(1500)
+                
                 // Marcar que este jugador ya jugó en esta ronda
-                repository.markPlayerAsPlayed(updatedGame.roomCode, selfPlayerId)
+                repository.markPlayerAsPlayed(game.roomCode, selfPlayerId)
+                
+                // Esperar a que se actualice el juego
+                kotlinx.coroutines.delay(500)
+                
+                // Obtener el juego actualizado desde Firebase
+                kotlinx.coroutines.delay(300)
+                val updatedGame = currentGame ?: return@launch
+                
+                // Verificar si el juego terminó después de marcar como jugado
+                if (repository.isGameOver(updatedGame)) {
+                    android.util.Log.d("GameViewModel", "Juego terminado después de acierto")
+                    repository.finishGame(updatedGame)
+                    return@launch
+                }
                 
                 // Verificar si todos los jugadores vivos ya jugaron
                 val alivePlayers = updatedGame.getAlivePlayers()
-                val playersWhoPlayed = updatedGame.playersWhoPlayedThisRound + selfPlayerId
+                val playersWhoPlayed = updatedGame.playersWhoPlayedThisRound
                 val allPlayersPlayed = alivePlayers.all { it.id in playersWhoPlayed }
                 
                 if (allPlayersPlayed) {
@@ -273,25 +279,106 @@ class GameViewModel : ViewModel() {
                         repository.startPlayerTurn(updatedGame.roomCode, nextPlayerId)
                     }
                 }
+            } else {
+                _statusMessage.postValue("Incorrecto. Has sido eliminado")
+                
+                // Esperar un momento para que el usuario vea el resultado
+                kotlinx.coroutines.delay(1500)
+                
+                // Esperar a que se actualice el juego después de la eliminación
+                kotlinx.coroutines.delay(800)
+                
+                // Obtener el juego actualizado
+                val updatedGame = currentGame ?: return@launch
+                
+                // Marcar que este jugador ya jugó (aunque falló)
+                repository.markPlayerAsPlayed(updatedGame.roomCode, selfPlayerId)
+                
+                // Esperar actualización
+                kotlinx.coroutines.delay(300)
+                
+                // Verificar si el juego terminó
+                val finalGame = currentGame ?: return@launch
+                if (repository.isGameOver(finalGame)) {
+                    android.util.Log.d("GameViewModel", "Juego terminado después de fallo")
+                    repository.finishGame(finalGame)
+                } else {
+                    // Verificar si todos jugaron esta ronda
+                    val alivePlayers = finalGame.getAlivePlayers()
+                    val playersWhoPlayed = finalGame.playersWhoPlayedThisRound
+                    val allPlayersPlayed = alivePlayers.all { it.id in playersWhoPlayed }
+                    
+                    if (allPlayersPlayed) {
+                        android.util.Log.d("GameViewModel", "Todos jugaron después de fallo, nueva ronda...")
+                        repository.endRound(finalGame)
+                    } else {
+                        // Avanzar al siguiente turno
+                        val nextPlayerId = repository.getNextPlayer(finalGame, selfPlayerId)
+                        if (nextPlayerId != null) {
+                            android.util.Log.d("GameViewModel", "Siguiente turno después de fallo: $nextPlayerId")
+                            repository.startPlayerTurn(finalGame.roomCode, nextPlayerId)
+                        }
+                    }
+                }
             }
         }
     }
 
-    private fun startTimer(duration: Int) {
+    private fun startTimer(initialDuration: Int) {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
-            for (second in duration downTo 0) {
-                _timerSeconds.postValue(second)
-                delay(1_000)
-            }
+            var remainingTime = initialDuration
             
-            // Si se acabó el tiempo y es mi turno, eliminar por timeout
-            if (_isPlayerTurn.value == true) {
-                val game = currentGame
-                if (game != null) {
-                    repository.eliminateByTimeout(game.roomCode, selfPlayerId)
-                    _statusMessage.postValue("Se acabó el tiempo. Has sido eliminado")
+            while (remainingTime >= 0) {
+                _timerSeconds.postValue(remainingTime)
+                
+                if (remainingTime == 0) {
+                    // Si se acabó el tiempo y es mi turno, eliminar por timeout
+                    if (_isPlayerTurn.value == true) {
+                        val game = currentGame
+                        if (game != null) {
+                            android.util.Log.d("GameViewModel", "Timeout para jugador: $selfPlayerId")
+                            repository.eliminateByTimeout(game.roomCode, selfPlayerId)
+                            _statusMessage.postValue("Se acabó el tiempo. Has sido eliminado")
+                            
+                            // Esperar un momento y avanzar al siguiente turno
+                            delay(1500)
+                            
+                            // Marcar que este jugador ya jugó (aunque por timeout)
+                            repository.markPlayerAsPlayed(game.roomCode, selfPlayerId)
+                            
+                            // Esperar actualización
+                            delay(500)
+                            
+                            val updatedGame = currentGame ?: return@launch
+                            if (repository.isGameOver(updatedGame)) {
+                                android.util.Log.d("GameViewModel", "Juego terminado después de timeout")
+                                repository.finishGame(updatedGame)
+                            } else {
+                                // Verificar si todos jugaron esta ronda
+                                val alivePlayers = updatedGame.getAlivePlayers()
+                                val playersWhoPlayed = updatedGame.playersWhoPlayedThisRound
+                                val allPlayersPlayed = alivePlayers.all { it.id in playersWhoPlayed }
+                                
+                                if (allPlayersPlayed) {
+                                    android.util.Log.d("GameViewModel", "Todos jugaron después de timeout, nueva ronda...")
+                                    repository.endRound(updatedGame)
+                                } else {
+                                    // Avanzar al siguiente turno
+                                    val nextPlayerId = repository.getNextPlayer(updatedGame, selfPlayerId)
+                                    if (nextPlayerId != null) {
+                                        android.util.Log.d("GameViewModel", "Siguiente turno después de timeout: $nextPlayerId")
+                                        repository.startPlayerTurn(updatedGame.roomCode, nextPlayerId)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    break
                 }
+                
+                delay(1_000)
+                remainingTime--
             }
         }
     }
