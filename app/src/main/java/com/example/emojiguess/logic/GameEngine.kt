@@ -146,12 +146,13 @@ class GameEngine(private val firebaseManager: FirebaseManager) {
     /**
      * Verifica si el juego ha terminado
      * @param game Estado actual del juego
-     * @return true si hay un ganador (solo queda 1 jugador vivo) o si no quedan jugadores
+     * @return true si no quedan jugadores vivos (todos perdieron)
      */
     fun checkGameOver(game: Game): Boolean {
         val alivePlayers = game.getAlivePlayers()
-        // El juego termina si queda 1 o menos jugadores
-        return alivePlayers.size <= 1
+        // El juego solo termina si NO quedan jugadores vivos (todos perdieron)
+        // Si queda 1 jugador, ese es el ganador pero el juego continúa hasta que todos jueguen
+        return alivePlayers.isEmpty()
     }
     
     /**
@@ -198,9 +199,16 @@ class GameEngine(private val firebaseManager: FirebaseManager) {
         // Pequeña pausa para mostrar resultados
         delay(Constants.ROUND_END_DELAY)
         
+        val alivePlayers = game.getAlivePlayers()
+        
         // Verificar si el juego terminó
-        if (checkGameOver(game)) {
-            android.util.Log.d("GameEngine", "Juego terminado, finalizando...")
+        if (alivePlayers.isEmpty()) {
+            // Todos perdieron - empate
+            android.util.Log.d("GameEngine", "Todos perdieron - Empate")
+            finishGame(game)
+        } else if (alivePlayers.size == 1) {
+            // Solo queda 1 jugador - es el ganador
+            android.util.Log.d("GameEngine", "Solo queda 1 jugador - Ganador: ${alivePlayers.first().name}")
             finishGame(game)
         } else {
             android.util.Log.d("GameEngine", "Iniciando nueva ronda...")

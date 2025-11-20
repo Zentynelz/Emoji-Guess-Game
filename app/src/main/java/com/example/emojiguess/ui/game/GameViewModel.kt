@@ -61,6 +61,9 @@ class GameViewModel : ViewModel() {
     private var currentGame: Game? = null
     private var lastTurnPlayerId: String = ""  // Para detectar cambios de turno
     private var lastRoundStartTime: Long = 0L  // Para detectar nuevo turno
+    private var lastGameState: String = ""  // Para detectar cambios de estado
+    private var lastPlayersHash: Int = 0  // Para detectar cambios en jugadores
+    private var lastAvailableEmojisHash: Int = 0  // Para evitar actualizar emojis constantemente
 
     fun initialize(roomId: String, playerId: String, playerName: String) {
         android.util.Log.d("GameViewModel", "Initialize - RoomId: $roomId, PlayerId: $playerId, PlayerName: $playerName")
@@ -93,7 +96,7 @@ class GameViewModel : ViewModel() {
         android.util.Log.d("GameViewModel", "UpdateGameState - Estado: ${game.state}, Jugadores: ${game.players.size}")
         currentGame = game
         
-        // Actualizar lista de jugadores
+        // Actualizar lista de jugadores solo si cambió
         val playersList = game.players.values.map { player ->
             val isSelf = player.id == selfPlayerId
             val visibleEmoji = if (isSelf) "?" else (player.emoji.takeIf { it.isNotEmpty() } ?: "?")
@@ -108,7 +111,12 @@ class GameViewModel : ViewModel() {
                 isEliminated = !player.isAlive
             )
         }
-        _players.postValue(playersList)
+        
+        val playersHash = playersList.hashCode()
+        if (playersHash != lastPlayersHash) {
+            _players.postValue(playersList)
+            lastPlayersHash = playersHash
+        }
         
         // Actualizar emoji oculto del jugador y emojis disponibles
         val myPlayer = game.players[selfPlayerId]
@@ -121,16 +129,23 @@ class GameViewModel : ViewModel() {
         val myEmoji = myPlayer?.emoji
         
         // Solo mostrar opciones si el jugador tiene emoji asignado
+        // Y solo actualizar si cambió el emoji del jugador o es la primera vez
         if (alivePlayers.isNotEmpty() && myEmoji != null && myEmoji.isNotEmpty()) {
-            // Asegurarse de que el emoji del jugador SIEMPRE esté en las opciones
-            val otherEmojis = EmojiManager.getAllEmojis()
-                .filter { it != myEmoji }
-                .shuffled()
-                .take(Constants.EMOJI_SELECTOR_OPTIONS - 1)
+            val emojiHash = myEmoji.hashCode()
             
-            // Mezclar para que el emoji correcto no siempre esté en la misma posición
-            val emojisToShow = (otherEmojis + myEmoji).shuffled()
-            _availableEmojis.postValue(emojisToShow)
+            // Solo actualizar si cambió el emoji o no hay emojis disponibles
+            if (emojiHash != lastAvailableEmojisHash || _availableEmojis.value.isNullOrEmpty()) {
+                // Asegurarse de que el emoji del jugador SIEMPRE esté en las opciones
+                val otherEmojis = EmojiManager.getAllEmojis()
+                    .filter { it != myEmoji }
+                    .shuffled()
+                    .take(Constants.EMOJI_SELECTOR_OPTIONS - 1)
+                
+                // Mezclar para que el emoji correcto no siempre esté en la misma posición
+                val emojisToShow = (otherEmojis + myEmoji).shuffled()
+                _availableEmojis.postValue(emojisToShow)
+                lastAvailableEmojisHash = emojiHash
+            }
         }
         
         // Actualizar si es el turno del jugador
@@ -176,8 +191,11 @@ class GameViewModel : ViewModel() {
             lastRoundStartTime = 0L
         }
         
-        // Actualizar mensaje de estado
-        updateStatusMessage(game, isMyTurn)
+        // Actualizar mensaje de estado solo si cambió el estado del juego o el turno
+        if (game.state != lastGameState || game.currentTurnPlayerId != lastTurnPlayerId) {
+            updateStatusMessage(game, isMyTurn)
+            lastGameState = game.state
+        }
     }
 
     private fun updateStatusMessage(game: Game, isMyTurn: Boolean) {
