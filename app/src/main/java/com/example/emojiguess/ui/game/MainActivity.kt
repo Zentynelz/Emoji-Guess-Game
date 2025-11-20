@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -16,13 +17,16 @@ import com.example.emojiguess.ui.theme.EmojiGuessTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        val navigationRoute = intent.getStringExtra("navigation_route")
+        
         setContent {
             EmojiGuessTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    EmojiGuessApp()
+                    EmojiGuessApp(startRoute = navigationRoute)
                 }
             }
         }
@@ -34,14 +38,22 @@ sealed class Screen(val route: String) {
     object CreateRoom : Screen("create_room")
     object JoinRoom : Screen("join_room")
     object Lobby : Screen("lobby")
-    object Game : Screen("game")
     object Victory : Screen("victory")
     object Defeat : Screen("defeat")
 }
 
 @Composable
-fun EmojiGuessApp() {
+fun EmojiGuessApp(startRoute: String? = null) {
     val navController = rememberNavController()
+    
+    LaunchedEffect(startRoute) {
+        if (!startRoute.isNullOrEmpty()) {
+            navController.navigate(startRoute) {
+                popUpTo(Screen.Welcome.route) { inclusive = false }
+            }
+        }
+    }
+    
     NavHost(navController = navController, startDestination = Screen.Welcome.route) {
         composable(Screen.Welcome.route) {
             WelcomeScreen(navController)
@@ -52,23 +64,27 @@ fun EmojiGuessApp() {
         composable(Screen.JoinRoom.route) {
             JoinRoomScreen(navController)
         }
-        composable(Screen.Lobby.route) {
-            // Pasa los datos necesarios a LobbyScreen
-            val roomId = "ABCD"        // Aquí puedes reemplazar con la lógica real
-            val playerName = "Jugador1" // Aquí también
-            val isHost = true           // Simulación de host
+        composable("${Screen.Lobby.route}/{roomCode}/{playerId}/{playerName}/{isHost}") { backStackEntry ->
+            val roomCode = backStackEntry.arguments?.getString("roomCode") ?: ""
+            val playerId = backStackEntry.arguments?.getString("playerId") ?: ""
+            val playerName = backStackEntry.arguments?.getString("playerName") ?: ""
+            val isHost = backStackEntry.arguments?.getString("isHost")?.toBoolean() ?: false
+            
             LobbyScreen(
                 navController = navController,
-                roomId = roomId,
+                roomCode = roomCode,
+                playerId = playerId,
                 playerName = playerName,
                 isHost = isHost
             )
         }
-        composable(Screen.Victory.route) {
-            VictoryScreen(navController)
+        composable("${Screen.Victory.route}/{winnerName}") { backStackEntry ->
+            val winnerName = backStackEntry.arguments?.getString("winnerName") ?: ""
+            VictoryScreen(navController, winnerName)
         }
-        composable(Screen.Defeat.route) {
-            DefeatScreen(navController)
+        composable("${Screen.Defeat.route}/{winnerName}") { backStackEntry ->
+            val winnerName = backStackEntry.arguments?.getString("winnerName") ?: ""
+            DefeatScreen(navController, winnerName)
         }
     }
 }

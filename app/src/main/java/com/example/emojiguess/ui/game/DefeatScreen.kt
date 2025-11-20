@@ -12,35 +12,59 @@ import androidx.navigation.NavController
 import com.airbnb.lottie.compose.*
 
 @Composable
-fun DefeatScreen(navController: NavController) {
+fun DefeatScreen(navController: NavController, winnerName: String = "") {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("DERROTA", style = MaterialTheme.typography.headlineLarge)
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Animación de Derrota (Opcional)
-        // **NOTA:** Se requiere un archivo JSON de Lottie para la animación real.
-        // Este es un placeholder visual.
         Text(
-            text = "💀 Animación de Derrota Lottie 💀",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(32.dp)
+            text = "💀",
+            style = MaterialTheme.typography.displayLarge,
+            modifier = Modifier.padding(bottom = 16.dp)
         )
-        // Ejemplo de cómo se usaría Lottie:
-        /*
-        val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.defeat_animation))
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(200.dp)
+        
+        Text(
+            text = "DERROTA",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.error
         )
-        */
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Has sido eliminado",
+            style = MaterialTheme.typography.titleLarge
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        if (winnerName.isNotEmpty() && winnerName != "Nadie") {
+            Text(
+                text = "El ganador es: $winnerName",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
+        } else if (winnerName == "Nadie") {
+            Text(
+                text = "Todos los jugadores fueron eliminados",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
+        }
 
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = { navController.popBackStack(Screen.Welcome.route, inclusive = false) }) {
+        Spacer(modifier = Modifier.height(48.dp))
+        
+        Button(
+            onClick = { 
+                navController.popBackStack(Screen.Welcome.route, inclusive = false)
+            },
+            modifier = Modifier
+                .fillMaxWidth(0.7f)
+                .height(50.dp)
+        ) {
             Text("Volver al Inicio")
         }
     }

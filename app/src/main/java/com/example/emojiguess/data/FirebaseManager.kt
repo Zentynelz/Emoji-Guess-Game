@@ -232,4 +232,27 @@ class FirebaseManager private constructor() {
     suspend fun leaveRoom(roomCode: String, playerId: String) {
         gamesRef.child(roomCode).child("players").child(playerId).removeValue().await()
     }
+    
+    /**
+     * Marca a un jugador como que ya jugó en esta ronda
+     */
+    suspend fun markPlayerAsPlayed(roomCode: String, playerId: String) {
+        val gameRef = gamesRef.child(roomCode)
+        val snapshot = gameRef.child("playersWhoPlayedThisRound").get().await()
+        
+        @Suppress("UNCHECKED_CAST")
+        val currentPlayers = (snapshot.value as? List<*>)?.mapNotNull { it as? String }?.toMutableList() ?: mutableListOf()
+        
+        if (!currentPlayers.contains(playerId)) {
+            currentPlayers.add(playerId)
+            gameRef.child("playersWhoPlayedThisRound").setValue(currentPlayers).await()
+        }
+    }
+    
+    /**
+     * Limpia la lista de jugadores que jugaron en esta ronda
+     */
+    suspend fun clearPlayersWhoPlayed(roomCode: String) {
+        gamesRef.child(roomCode).child("playersWhoPlayedThisRound").setValue(emptyList<String>()).await()
+    }
 }

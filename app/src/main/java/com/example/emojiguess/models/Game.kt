@@ -21,7 +21,8 @@ data class Game(
     val currentTurnPlayerId: String = "",
     val roundStartTime: Long = 0L,
     val roundDuration: Int = 30, // 30 segundos por defecto
-    val winnerId: String? = null
+    val winnerId: String? = null,
+    val playersWhoPlayedThisRound: List<String> = emptyList() // Jugadores que ya jugaron en esta ronda
 ) {
     /**
      * Convierte el objeto Game a un Map para Firebase
@@ -36,7 +37,8 @@ data class Game(
             "currentTurnPlayerId" to currentTurnPlayerId,
             "roundStartTime" to roundStartTime,
             "roundDuration" to roundDuration,
-            "winnerId" to (winnerId ?: "")
+            "winnerId" to (winnerId ?: ""),
+            "playersWhoPlayedThisRound" to playersWhoPlayedThisRound
         )
     }
     
@@ -68,6 +70,8 @@ data class Game(
                 Player.fromMap(it.value) 
             } ?: emptyMap()
             
+            val playersWhoPlayed = (map["playersWhoPlayedThisRound"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            
             return Game(
                 roomCode = map["roomCode"] as? String ?: "",
                 hostId = map["hostId"] as? String ?: "",
@@ -77,7 +81,8 @@ data class Game(
                 currentTurnPlayerId = map["currentTurnPlayerId"] as? String ?: "",
                 roundStartTime = map["roundStartTime"] as? Long ?: 0L,
                 roundDuration = (map["roundDuration"] as? Long)?.toInt() ?: 30,
-                winnerId = (map["winnerId"] as? String)?.takeIf { it.isNotEmpty() }
+                winnerId = (map["winnerId"] as? String)?.takeIf { it.isNotEmpty() },
+                playersWhoPlayedThisRound = playersWhoPlayed
             )
         }
     }

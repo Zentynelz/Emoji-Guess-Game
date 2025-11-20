@@ -8,9 +8,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.emojiguess.MainActivity
 import com.example.emojiguess.R
+import com.example.emojiguess.Screen
 import com.example.emojiguess.databinding.ActivityGameBinding
 import com.example.emojiguess.ui.chat.ChatFragment
+import com.example.emojiguess.utils.Constants
 import com.google.android.material.chip.Chip
 import com.google.android.material.snackbar.Snackbar
 
@@ -38,7 +41,11 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun setupToolbar(roomId: String) {
-        binding.textRoomTitle.text = getString(R.string.title_game_room, roomId)
+        binding.textRoomTitle.text = if (roomId.isNotEmpty()) {
+            "Sala: $roomId"
+        } else {
+            "Sala: Cargando..."
+        }
     }
 
     private fun setupPlayersList() {
@@ -53,7 +60,13 @@ class GameActivity : AppCompatActivity() {
             playerAdapter.submitList(players)
         }
         viewModel.timerSeconds.observe(this) { seconds ->
-            binding.textTimer.text = getString(R.string.label_timer_value, seconds)
+            binding.textTimer.text = "${seconds}s"
+            // Cambiar color si queda poco tiempo
+            if (seconds <= Constants.DEFAULT_ROUND_DURATION / 3) {
+                binding.textTimer.setTextColor(getColor(R.color.playerEliminated))
+            } else {
+                binding.textTimer.setTextColor(getColor(R.color.colorPrimary))
+            }
         }
         viewModel.hiddenEmoji.observe(this) { emoji ->
             binding.textHiddenEmoji.text = emoji
@@ -71,6 +84,30 @@ class GameActivity : AppCompatActivity() {
         viewModel.selectedEmoji.observe(this) { selected ->
             updateChipSelection(selected)
         }
+        viewModel.gameFinished.observe(this) { result ->
+            result?.let { 
+                // Esperar un momento antes de navegar
+                binding.root.postDelayed({
+                    navigateToEndScreen(it.won, it.winnerName)
+                }, Constants.ROUND_END_DELAY)
+            }
+        }
+    }
+    
+    private fun navigateToEndScreen(won: Boolean, winnerName: String) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+            
+            val route = if (won) {
+                "${Screen.Victory.route}/$winnerName"
+            } else {
+                "${Screen.Defeat.route}/$winnerName"
+            }
+            
+            putExtra("navigation_route", route)
+        }
+        startActivity(intent)
+        finish()
     }
 
     private val emojiObserver = Observer<List<String>> { emojis ->

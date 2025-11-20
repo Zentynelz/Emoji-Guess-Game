@@ -10,12 +10,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.emojiguess.ui.game.GameActivity
+import com.example.emojiguess.utils.Constants
+import kotlinx.coroutines.launch
 
 @Composable
 fun JoinRoomScreen(navController: NavController) {
     var playerName by remember { mutableStateOf("") }
-    var roomId by remember { mutableStateOf("") }
+    var roomCode by remember { mutableStateOf("") }
+    var isJoining by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -36,49 +40,88 @@ fun JoinRoomScreen(navController: NavController) {
             onValueChange = { playerName = it },
             label = { Text("Tu Nombre") },
             singleLine = true,
+            enabled = !isJoining,
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Campo para ID de la sala
+        // Campo para código de la sala
         OutlinedTextField(
-            value = roomId,
-            onValueChange = { roomId = it },
-            label = { Text("ID de la Sala") },
+            value = roomCode,
+            onValueChange = { 
+                if (it.length <= Constants.ROOM_CODE_LENGTH) {
+                    roomCode = it.uppercase()
+                }
+            },
+            label = { Text("Código de la Sala (${Constants.ROOM_CODE_LENGTH} caracteres)") },
             singleLine = true,
+            enabled = !isJoining,
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Botón para unirse y abrir GameActivity
+        // Botón para unirse
         Button(
             onClick = {
-                if (playerName.isNotBlank() && roomId.isNotBlank()) {
-                    val playerId = "player1" // Puedes generar dinámicamente si quieres
-                    val intent = GameActivity.createIntent(context, roomId, playerId, playerName)
-                    context.startActivity(intent)
+                if (playerName.isNotBlank() && roomCode.isNotBlank()) {
+                    isJoining = true
+                    scope.launch {
+                        try {
+                            val repository = com.example.emojiguess.data.GameRepository.getInstance()
+                            
+                            // Autenticar usuario
+                            val playerId = repository.authenticateUser()
+                            
+                            // Unirse a la sala
+                            val success = repository.joinRoom(roomCode, playerName)
+                            
+                            if (success) {
+                                // Navegar a LobbyScreen
+                                navController.navigate("${Screen.Lobby.route}/$roomCode/$playerId/$playerName/false")
+                            } else {
+                                Toast.makeText(context, "Sala no encontrada", Toast.LENGTH_SHORT).show()
+                                isJoining = false
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                            isJoining = false
+                        }
+                    }
                 } else {
                     Toast.makeText(
                         context,
-                        "Ingresa tu nombre y el ID de la sala",
+                        "Ingresa tu nombre y el código de la sala",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
             },
-            enabled = playerName.isNotBlank() && roomId.isNotBlank(),
+            enabled = playerName.length >= Constants.MIN_PLAYER_NAME_LENGTH && 
+                     playerName.length <= Constants.MAX_PLAYER_NAME_LENGTH && 
+                     roomCode.length == Constants.ROOM_CODE_LENGTH && 
+                     !isJoining,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)
         ) {
-            Text("Unirse a Sala")
+            if (isJoining) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+            } else {
+                Text("Unirse a Sala")
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Botón de volver
-        TextButton(onClick = { navController.popBackStack() }) {
+        TextButton(
+            onClick = { navController.popBackStack() },
+            enabled = !isJoining
+        ) {
             Text("Volver")
         }
     }

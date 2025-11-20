@@ -9,23 +9,27 @@
 
     <TextView
         android:id="@+id/textRoomTitle"
-        style="@style/TextAppearance.Material3.HeadlineSmall"
-        android:layout_width="0dp"
+        style="@style/TextAppearance.Material3.TitleMedium"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:textColor="@color/colorOnSurface"
-        app:layout_constraintEnd_toStartOf="@+id/textTimer"
+        android:textSize="18sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="Sala: demo-room" />
+        tools:text="Sala: ABC123" />
 
     <TextView
         android:id="@+id/textTimer"
-        style="@style/TextAppearance.Material3.BodyLarge"
+        style="@style/TextAppearance.Material3.HeadlineMedium"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:textColor="@color/colorPrimary"
-        app:layout_constraintBaseline_toBaselineOf="@id/textRoomTitle"
+        android:textSize="24sp"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
         tools:text="30s" />
 
     <TextView
@@ -33,31 +37,34 @@
         style="@style/TextAppearance.Material3.LabelLarge"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
         android:text="@string/label_your_turn"
         android:textColor="@color/colorSuccess"
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/textRoomTitle" />
+        app:layout_constraintTop_toBottomOf="@id/textTimer" />
 
     <TextView
         android:id="@+id/textHiddenEmojiLabel"
         style="@style/TextAppearance.Material3.BodyMedium"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:text="@string/label_hidden_emoji"
+        android:textColor="@color/colorOnSurface"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/textRoomTitle" />
 
     <TextView
         android:id="@+id/textHiddenEmoji"
-        style="@style/TextAppearance.Material3.DisplayMedium"
+        style="@style/TextAppearance.Material3.DisplaySmall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
         android:text="@string/placeholder_hidden_emoji"
-        app:layout_constraintBaseline_toBaselineOf="@id/textTurnIndicator"
+        android:textSize="40sp"
+        app:layout_constraintBaseline_toBaselineOf="@id/textHiddenEmojiLabel"
         app:layout_constraintStart_toEndOf="@id/textHiddenEmojiLabel"
-        app:layout_constraintTop_toBottomOf="@id/textRoomTitle"
-        app:layout_constraintVertical_bias="0"
         tools:text="?" />
 
     <androidx.recyclerview.widget.RecyclerView

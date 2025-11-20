@@ -11,34 +11,58 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.emojiguess.data.GameRepository
+import com.example.emojiguess.models.GameState
 import com.example.emojiguess.ui.game.GameActivity
-
-data class Player(val id: Int, val name: String, val isHost: Boolean = false)
+import com.example.emojiguess.utils.Constants
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LobbyScreen(
     navController: NavController,
-    roomId: String,
+    roomCode: String,
+    playerId: String,
     playerName: String,
     isHost: Boolean
 ) {
-    val players = remember {
-        mutableStateListOf(
-            Player(1, "$playerName (Host)", isHost),
-            Player(2, "Jugador 2"),
-            Player(3, "Jugador 3"),
-            Player(4, "Jugador 4")
-        )
-    }
-
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val repository = remember { GameRepository.getInstance() }
+    
+    var players by remember { mutableStateOf<List<com.example.emojiguess.models.Player>>(emptyList()) }
+    var gameState by remember { mutableStateOf(GameState.WAITING) }
+    var canStartGame by remember { mutableStateOf(false) }
+    
+    // Observar cambios en el juego
+    LaunchedEffect(roomCode) {
+        repository.observeGame(roomCode)
+            .catch { e -> 
+                android.util.Log.e("LobbyScreen", "Error observando juego", e)
+            }
+            .collect { game ->
+                game?.let {
+                    players = it.players.values.toList()
+                    gameState = it.getGameState()
+                    canStartGame = players.size >= Constants.MIN_PLAYERS
+                    
+                    // Si el juego inició, navegar a GameActivity
+                    if (gameState == GameState.IN_PROGRESS || gameState == GameState.STARTING) {
+                        val intent = GameActivity.createIntent(context, roomCode, playerId, playerName)
+                        context.startActivity(intent)
+                    }
+                }
+            }
+    }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Sala: $roomId") }
+                title = { Text("Sala: $roomCode") }
             )
         }
     ) { paddingValues ->
@@ -50,8 +74,18 @@ fun LobbyScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Esperando jugadores...",
-                style = MaterialTheme.typography.headlineSmall,
+                text = "Sala: $roomCode",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            Text(
+                text = if (canStartGame) {
+                    "Esperando que el host inicie..."
+                } else {
+                    "Esperando más jugadores (${players.size}/${Constants.MIN_PLAYERS})"
+                },
+                style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
@@ -70,14 +104,20 @@ fun LobbyScreen(
                             leadingContent = {
                                 Icon(Icons.Filled.Person, contentDescription = "Jugador")
                             },
-                            headlineContent = { Text(player.name) },
+                            headlineContent = { 
+                                Text(
+                                    text = if (player.id == playerId) "${player.name} (Tú)" else player.name
+                                )
+                            },
                             trailingContent = {
                                 if (player.isHost) {
                                     Text("HOST", color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         )
-                        HorizontalDivider()
+                        if (player != players.last()) {
+                            HorizontalDivider()
+                        }
                     }
                 }
             }
@@ -86,18 +126,72 @@ fun LobbyScreen(
 
             // Botón para iniciar partida (solo visible para el host)
             if (isHost) {
+                var isStarting by remember { mutableStateOf(false) }
+                
                 Button(
                     onClick = {
-                        val playerId = "player1" // O tu lógica para asignar ID
-                        val intent = GameActivity.createIntent(context, roomId, playerId, playerName)
-                        context.startActivity(intent)
-                    }
+                        scope.launch {
+                            try {
+                                isStarting = true
+                                android.util.Log.d("LobbyScreen", "Host iniciando juego...")
+                                
+                                // Obtener el juego actual
+                                val game = repository.observeGame(roomCode).catch { }.first { it != null }
+                                
+                                if (game != null) {
+                                    // 1. Asignar emojis a los jugadores
+                                    android.util.Log.d("LobbyScreen", "Asignando emojis...")
+                                    repository.assignEmojis(game)
+                                    
+                                    // 2. Esperar un momento
+                                    kotlinx.coroutines.delay(500)
+                                    
+                                    // 3. Iniciar el juego (cambia estado a STARTING)
+                                    android.util.Log.d("LobbyScreen", "Iniciando juego...")
+                                    repository.startGame(roomCode)
+                                    
+                                    // 4. Esperar un momento
+                                    kotlinx.coroutines.delay(500)
+                                    
+                                    // 5. Iniciar el primer turno
+                                    val firstPlayer = game.getAlivePlayers().firstOrNull()
+                                    if (firstPlayer != null) {
+                                        android.util.Log.d("LobbyScreen", "Iniciando turno de ${firstPlayer.name}")
+                                        repository.startPlayerTurn(roomCode, firstPlayer.id)
+                                    }
+                                    
+                                    // La navegación a GameActivity se hará automáticamente
+                                    // cuando el estado cambie a IN_PROGRESS
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("LobbyScreen", "Error al iniciar juego", e)
+                                isStarting = false
+                            }
+                        }
+                    },
+                    enabled = canStartGame && !isStarting
                 ) {
-                    Text("Iniciar Partida (${players.size}/4)")
+                    if (isStarting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text("Iniciar Partida (${players.size}/${Constants.MAX_PLAYERS})")
+                    }
+                }
+                
+                if (!canStartGame) {
+                    Text(
+                        text = "Se necesitan al menos ${Constants.MIN_PLAYERS} jugadores",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
             } else {
                 Text(
-                    text = "Esperando a que el Host inicie la partida...",
+                    text = "Esperando a que el host inicie la partida...",
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -125,7 +219,14 @@ fun LobbyScreen(
                         Button(
                             onClick = {
                                 showExitDialog = false
-                                navController.popBackStack()
+                                scope.launch {
+                                    try {
+                                        repository.leaveRoom(roomCode)
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("LobbyScreen", "Error al salir", e)
+                                    }
+                                }
+                                navController.popBackStack(Screen.Welcome.route, inclusive = false)
                             }
                         ) {
                             Text("Sí, Salir")

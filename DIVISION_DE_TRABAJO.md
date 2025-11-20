@@ -1,89 +1,92 @@
-# División de Trabajo - Emoji Guess Game
-## Proyecto: Aplicación Android con Kotlin para juego multijugador en línea
+# División de Trabajo
 
+Aplicación Android con Kotlin para juego multijugador en línea.
 
-## 📋 PERSONA 1 - Backend & Firebase 
+## PERSONA 1 - Backend & Firebase
 
-### Responsabilidades Principales:
-1. **Integración completa con Firebase (1.0 punto)**
-   - Configurar Firebase en el proyecto Android
-   - Implementar Firebase Realtime Database para sincronización en tiempo real
-   - Crear estructura de datos para:
-     - Salas de juego (game rooms)
-     - Jugadores (players)
-     - Estado del juego (game state)
-     - Turnos y rondas
-   - Implementar listeners para cambios en tiempo real
-   - Gestionar autenticación anónima de jugadores
+### Responsabilidades:
 
-2. **Lógica del Juego - Core (1.0 punto)**
-   - Sistema de asignación aleatoria de emojis
-   - Control de turnos entre jugadores
-   - Temporizador de ronda (countdown)
-   - Validación de respuestas (correcta/incorrecta)
-   - Sistema de eliminación de jugadores
-   - Detección de victoria (último jugador en pie)
-   - Reasignación de emojis en cada ronda
+**1. Integración con Firebase (1.0 punto)**
+- Configurar Firebase en el proyecto
+- Implementar Firebase Realtime Database
+- Estructura de datos (salas, jugadores, estado, turnos)
+- Listeners para cambios en tiempo real
+- Autenticación anónima
 
-3. **Pruebas Unitarias (0.25 puntos)**
-   - Crear pruebas para la lógica de asignación de emojis
-   - Probar validación de respuestas
-   - Probar detección de victoria
+**2. Lógica del Juego (1.0 punto)**
+- Sistema de asignación aleatoria de emojis
+- Control de turnos entre jugadores
+- Temporizador de ronda
+- Validación de respuestas
+- Sistema de eliminación
+- Detección de victoria
+- Reasignación de emojis por ronda
 
+**3. Pruebas Unitarias (0.25 puntos)**
+- Pruebas de asignación de emojis
+- Pruebas de validación de respuestas
+- Pruebas de detección de victoria
 
-## 📋 PERSONA 2 - Chat & Comunicación
+## PERSONA 2 - Chat & Comunicación
 
-### Responsabilidades Principales:
-1. **Sistema de Chat Completo (1.5 puntos)**
-   - Implementar chat global en tiempo real con Firebase
-   - Diseño de interfaz del chat (lista de mensajes)
-   - Input de texto para enviar mensajes
-   - Mostrar nombre/ID del jugador que envía mensaje
-   - Timestamp de mensajes
-   - Auto-scroll al último mensaje
-   - Sincronización en tiempo real de mensajes
+### Responsabilidades:
 
-2. **Interfaz de Usuario - Pantalla de Juego (0.5 puntos)**
-   - Diseño de la pantalla principal del juego
-   - Visualización de emojis de otros jugadores
-   - Mostrar el emoji oculto del jugador actual (con "?")
-   - Grid/lista de jugadores con sus emojis
-   - Indicador visual del turno actual
-   - Temporizador visible en pantalla
-   - Selector de emoji para adivinar
-   - Integrar el chat en la interfaz
+**1. Sistema de Chat (1.5 puntos)**
+- Chat global en tiempo real con Firebase
+- Diseño de interfaz del chat
+- Input de texto para mensajes
+- Mostrar nombre del jugador
+- Timestamp de mensajes
+- Auto-scroll
+- Sincronización en tiempo real
 
+**2. Interfaz de Usuario - Pantalla de Juego (0.5 puntos)**
+- Diseño de pantalla principal del juego
+- Visualización de emojis de otros jugadores
+- Emoji oculto del jugador actual ("?")
+- Grid de jugadores con emojis
+- Indicador visual del turno actual
+- Temporizador visible
+- Selector de emoji
+- Integración del chat
 
+## PERSONA 3 - UI/UX & Flujo de Navegación
 
-## 📋 PERSONA 3 - UI/UX & Flujo de Navegación 
+### Responsabilidades:
 
-### Responsabilidades Principales:
-1. **Pantallas de Navegación y Lobby (0.5 puntos)**
-   - Pantalla de inicio/bienvenida
-   - Pantalla para crear sala
-   - Pantalla para unirse a sala (código de sala)
-   - Pantalla de lobby (espera de jugadores)
-   - Lista de jugadores en espera
-   - Botón para iniciar partida (host)
+**1. Pantallas de Navegación y Lobby (0.5 puntos)**
+- Pantalla de inicio/bienvenida
+- Pantalla para crear sala
+- Pantalla para unirse a sala
+- Pantalla de lobby (espera de jugadores)
+- Lista de jugadores en espera
+- Botón para iniciar partida (host)
 
-2. **Manejo de Eventos y Flujo del Juego (0.5 puntos)**
-   - Botón para salir del juego
-   - Diálogo de confirmación para salir
-   - Pantalla de victoria/derrota
-   - Animaciones de transición entre pantallas
-   - Feedback visual cuando un jugador es eliminado
-   - Feedback visual cuando se acierta/falla
-   - Manejo de estados de conexión/desconexión
+**2. Manejo de Eventos y Flujo del Juego (0.5 puntos)**
+- Botón para salir del juego
+- Diálogo de confirmación
+- Pantalla de victoria/derrota
+- Animaciones de transición
+- Feedback visual (eliminación, acierto/fallo)
+- Manejo de estados de conexión
 
-3. **Efectos y Animaciones Opcionales (0.25 puntos)**
-   - Animación de countdown del temporizador
-   - Animación cuando un jugador es eliminado
-   - Animación de victoria
-   - Transiciones suaves entre rondas
-   - Efectos visuales al enviar mensajes
+**3. Efectos y Animaciones (0.25 puntos)**
+- Animación de countdown
+- Animación de eliminación
+- Animación de victoria
+- Transiciones entre rondas
+- Efectos visuales en mensajes
 
-4. **Código Limpio y Documentado (0.25 puntos)**
-   - Documentar todas las clases y funciones principales
-   - Crear README.md con instrucciones
-   - Comentarios en código complejo
-   - Seguir convenciones de Kotlin
+**4. Código Limpio y Documentado (0.25 puntos)**
+- Documentar clases y funciones
+- Crear README.md
+- Comentarios en código complejo
+- Seguir convenciones de Kotlin
+
+## Distribución de Puntos
+
+- Persona 1: 2.25 puntos
+- Persona 2: 2.0 puntos
+- Persona 3: 1.5 puntos
+
+**Total:** 5.75 puntos

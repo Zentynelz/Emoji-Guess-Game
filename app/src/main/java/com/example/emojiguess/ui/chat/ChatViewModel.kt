@@ -19,9 +19,7 @@ class ChatViewModel(
     private val roomId: String,
     private val playerId: String,
     private val playerName: String,
-    // OJO: ahora es nullable y NO llama a FirebaseDatabase.getInstance() por defecto
-  //  private val database: DatabaseReference = FirebaseDatabase.getInstance().reference
-    private val database: DatabaseReference? = null
+    private val database: DatabaseReference = FirebaseDatabase.getInstance().reference
 ) : ViewModel() {
 
     private val _messages = MutableLiveData<List<Message>>(emptyList())
@@ -43,7 +41,6 @@ class ChatViewModel(
     }
 
     private fun attachListener() {
-        val db = database ?: return   // <<--- si no hay Firebase, no hacemos nada
         val listener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val message = snapshot.getValue(Message::class.java) ?: return
@@ -59,26 +56,25 @@ class ChatViewModel(
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) = Unit
             override fun onCancelled(error: DatabaseError) = Unit
         }
-        database.child("rooms").child(roomId).child("messages").addChildEventListener(listener)
+        database.child("messages").child(roomId).addChildEventListener(listener)
         messagesListener = listener
     }
 
     fun sendMessage(rawContent: String) {
-        val db = database ?: return   // <<--- no Firebase, no enviamos
         val content = rawContent.trim()
         if (content.isEmpty() || _isSending.value == true) return
 
-        val messageId = database.child("rooms").child(roomId).child("messages").push().key ?: return
+        val messageId = database.child("messages").child(roomId).push().key ?: return
         val message = Message(
             id = messageId,
-            senderId = playerId,
-            senderName = playerName,
-            content = content,
+            playerId = playerId,
+            playerName = playerName,
+            text = content,
             timestamp = System.currentTimeMillis()
         )
         _isSending.value = true
-        database.child("rooms").child(roomId).child("messages").child(messageId)
-            .setValue(message)
+        database.child("messages").child(roomId).child(messageId)
+            .setValue(message.toMap())
             .addOnCompleteListener {
                 _isSending.postValue(false)
             }
@@ -86,9 +82,8 @@ class ChatViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        val db = database ?: return   // <<--- igual aquí
         messagesListener?.let {
-            database.child("rooms").child(roomId).child("messages").removeEventListener(it)
+            database.child("messages").child(roomId).removeEventListener(it)
         }
     }
 

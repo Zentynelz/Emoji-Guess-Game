@@ -12,35 +12,55 @@ import androidx.navigation.NavController
 import com.airbnb.lottie.compose.*
 
 @Composable
-fun VictoryScreen(navController: NavController) {
+fun VictoryScreen(navController: NavController, winnerName: String = "") {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("¡VICTORIA!", style = MaterialTheme.typography.headlineLarge)
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Animación de Victoria (Opcional)
-        // **NOTA:** Se requiere un archivo JSON de Lottie para la animación real.
-        // Este es un placeholder visual.
         Text(
-            text = "🎉 Animación de Victoria Lottie 🎉",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(32.dp)
+            text = "🎉",
+            style = MaterialTheme.typography.displayLarge,
+            modifier = Modifier.padding(bottom = 16.dp)
         )
-        // Ejemplo de cómo se usaría Lottie:
-        /*
-        val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.victory_animation))
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(200.dp)
+        
+        Text(
+            text = "¡VICTORIA!",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary
         )
-        */
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = if (winnerName.isNotEmpty()) {
+                "¡Felicidades $winnerName!"
+            } else {
+                "¡Felicidades!"
+            },
+            style = MaterialTheme.typography.titleLarge
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "Eres el último jugador en pie",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
 
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = { navController.popBackStack(Screen.Welcome.route, inclusive = false) }) {
+        Spacer(modifier = Modifier.height(48.dp))
+        
+        Button(
+            onClick = { 
+                navController.popBackStack(Screen.Welcome.route, inclusive = false)
+            },
+            modifier = Modifier
+                .fillMaxWidth(0.7f)
+                .height(50.dp)
+        ) {
             Text("Volver al Inicio")
         }
     }

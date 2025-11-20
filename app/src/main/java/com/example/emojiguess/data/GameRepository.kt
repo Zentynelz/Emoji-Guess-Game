@@ -182,4 +182,11 @@ class GameRepository private constructor(
     suspend fun deleteRoom(roomCode: String) {
         firebaseManager.deleteRoom(roomCode)
     }
+    
+    /**
+     * Marca a un jugador como que ya jugó en esta ronda
+     */
+    suspend fun markPlayerAsPlayed(roomCode: String, playerId: String) {
+        firebaseManager.markPlayerAsPlayed(roomCode, playerId)
+    }
 }

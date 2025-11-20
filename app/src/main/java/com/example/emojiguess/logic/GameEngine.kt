@@ -4,6 +4,7 @@ import com.example.emojiguess.data.FirebaseManager
 import com.example.emojiguess.models.Game
 import com.example.emojiguess.models.GameState
 import com.example.emojiguess.models.Player
+import com.example.emojiguess.utils.Constants
 import kotlinx.coroutines.delay
 
 /**
@@ -20,7 +21,7 @@ class GameEngine(private val firebaseManager: FirebaseManager) {
         firebaseManager.updateGameState(roomCode, GameState.STARTING.name)
         
         // Pequeña pausa para que todos vean que el juego está iniciando
-        delay(1000)
+        delay(Constants.GAME_START_DELAY)
         
         // Iniciar primera ronda
         startNewRound(roomCode, 1)
@@ -145,10 +146,11 @@ class GameEngine(private val firebaseManager: FirebaseManager) {
     /**
      * Verifica si el juego ha terminado
      * @param game Estado actual del juego
-     * @return true si hay un ganador (solo queda 1 jugador vivo)
+     * @return true si hay un ganador (solo queda 1 jugador vivo) o si no quedan jugadores
      */
     fun checkGameOver(game: Game): Boolean {
         val alivePlayers = game.getAlivePlayers()
+        // El juego termina si queda 1 o menos jugadores
         return alivePlayers.size <= 1
     }
     
@@ -159,9 +161,14 @@ class GameEngine(private val firebaseManager: FirebaseManager) {
     suspend fun finishGame(game: Game) {
         val alivePlayers = game.getAlivePlayers()
         
+        // Si queda exactamente 1 jugador, ese es el ganador
         if (alivePlayers.size == 1) {
             val winner = alivePlayers.first()
             firebaseManager.setWinner(game.roomCode, winner.id)
+        }
+        // Si no queda nadie (todos fallaron), no hay ganador
+        else if (alivePlayers.isEmpty()) {
+            firebaseManager.setWinner(game.roomCode, "")
         }
         
         firebaseManager.updateGameState(game.roomCode, GameState.FINISHED.name)
@@ -183,24 +190,47 @@ class GameEngine(private val firebaseManager: FirebaseManager) {
      * @param game Estado actual del juego
      */
     suspend fun endRound(game: Game) {
+        android.util.Log.d("GameEngine", "Finalizando ronda ${game.currentRound}")
+        
         // Cambiar estado a ROUND_END
         firebaseManager.updateGameState(game.roomCode, GameState.ROUND_END.name)
         
         // Pequeña pausa para mostrar resultados
-        delay(2000)
+        delay(Constants.ROUND_END_DELAY)
         
         // Verificar si el juego terminó
         if (checkGameOver(game)) {
+            android.util.Log.d("GameEngine", "Juego terminado, finalizando...")
             finishGame(game)
         } else {
+            android.util.Log.d("GameEngine", "Iniciando nueva ronda...")
+            
             // Iniciar nueva ronda
             val nextRound = game.currentRound + 1
             
-            // Asignar nuevos emojis
+            // Limpiar la lista de jugadores que jugaron
+            android.util.Log.d("GameEngine", "Limpiando lista de jugadores que jugaron")
+            firebaseManager.clearPlayersWhoPlayed(game.roomCode)
+            
+            // Asignar nuevos emojis a los jugadores vivos
+            android.util.Log.d("GameEngine", "Reasignando emojis para ronda $nextRound")
             assignEmojisToPlayers(game)
             
-            // Iniciar siguiente ronda
-            startNewRound(game.roomCode, nextRound)
+            // Esperar a que se actualicen los emojis
+            delay(500)
+            
+            // Actualizar número de ronda
+            firebaseManager.updateRound(game.roomCode, nextRound)
+            
+            // Cambiar estado a IN_PROGRESS
+            firebaseManager.updateGameState(game.roomCode, GameState.IN_PROGRESS.name)
+            
+            // Iniciar turno del primer jugador vivo
+            val firstPlayer = game.getAlivePlayers().firstOrNull()
+            if (firstPlayer != null) {
+                android.util.Log.d("GameEngine", "Iniciando turno de ${firstPlayer.name}")
+                startPlayerTurn(game.roomCode, firstPlayer.id)
+            }
         }
     }
     
